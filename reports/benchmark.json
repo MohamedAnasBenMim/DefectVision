@@ -1,0 +1,17 @@
+{
+  "cpu": "x86_64",
+  "logical_cpus": 2,
+  "runs": 40,
+  "patchcore": {
+    "p50_ms": 101.6,
+    "p95_ms": 119.9,
+    "images_per_s": 9.9,
+    "size_mb": 29.2
+  },
+  "unet": {
+    "p50_ms": 69.1,
+    "p95_ms": 73.7,
+    "images_per_s": 15.0,
+    "size_mb": 57.3
+  }
+}

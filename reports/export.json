@@ -1,0 +1,10 @@
+{
+  "patchcore": {
+    "max_abs_diff_vs_torch": 2.86102294921875e-06,
+    "size_mb": 29.2
+  },
+  "unet": {
+    "max_abs_diff_vs_torch": 5.960464477539062e-07,
+    "size_mb": 57.3
+  }
+}

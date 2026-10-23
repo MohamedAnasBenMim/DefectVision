@@ -1,0 +1,54 @@
+{
+  "model": "patchcore",
+  "split": "by physical piece (group)",
+  "split_summary": {
+    "train": {
+      "images": 806,
+      "pieces": 148,
+      "defect_images": 232,
+      "good_images": 574
+    },
+    "val": {
+      "images": 266,
+      "pieces": 49,
+      "defect_images": 81,
+      "good_images": 185
+    },
+    "test": {
+      "images": 272,
+      "pieces": 49,
+      "defect_images": 79,
+      "good_images": 193
+    }
+  },
+  "training_images": 574,
+  "defect_labels_used": 0,
+  "memory_bank": 11755,
+  "fit_seconds": 247.6,
+  "torch_cpu_ms_per_image": 136.7,
+  "image_auroc": 0.8208,
+  "image_auroc_ci95": [
+    0.6523,
+    0.957
+  ],
+  "image_auroc_per_defect": {
+    "blowhole": 0.9106,
+    "break": 0.6136,
+    "crack": 0.9171,
+    "fray": 0.9976,
+    "uneven": 0.7291
+  },
+  "pixel_auroc": 0.8357,
+  "aupro_30": 0.7456,
+  "operating_point": {
+    "threshold": 1.6137,
+    "recall": 0.9241,
+    "escape_rate": 0.0759,
+    "false_reject_rate": 0.7824,
+    "precision": 0.3259,
+    "tp": 73,
+    "fn": 6,
+    "fp": 151,
+    "tn": 42
+  }
+}

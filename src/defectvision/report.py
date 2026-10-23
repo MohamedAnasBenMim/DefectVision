@@ -100,7 +100,7 @@ def figures(cfg: dict, out: Path, artifacts: str | Path = "artifacts") -> None:
         ax.set_xticks(x, labels)
         ax.set_ylim(0.5, 1.04)
         ax.set_title("PatchCore: effect of train/test leakage", color=INK, fontsize=11, loc="left")
-        ax.legend(frameon=False, fontsize=8, loc="lower left")
+        ax.legend(frameon=False, fontsize=8, loc="upper right")
         _style(ax)
         ax.grid(axis="x", visible=False)
         fig.tight_layout()

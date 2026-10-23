@@ -1,0 +1,108 @@
+{
+  "model": "unet",
+  "split": "by physical piece (group)",
+  "split_summary": {
+    "train": {
+      "images": 806,
+      "pieces": 148,
+      "defect_images": 232,
+      "good_images": 574
+    },
+    "val": {
+      "images": 266,
+      "pieces": 49,
+      "defect_images": 81,
+      "good_images": 185
+    },
+    "test": {
+      "images": 272,
+      "pieces": 49,
+      "defect_images": 79,
+      "good_images": 193
+    }
+  },
+  "training_images": 806,
+  "defect_labels_used": 232,
+  "best_epoch": 12,
+  "fit_seconds": 1450.4,
+  "torch_cpu_ms_per_image": 72.0,
+  "image_auroc": 0.8465,
+  "image_auroc_ci95": [
+    0.713,
+    0.9323
+  ],
+  "image_auroc_per_defect": {
+    "blowhole": 0.7431,
+    "break": 0.8165,
+    "crack": 0.7498,
+    "fray": 0.8234,
+    "uneven": 0.9975
+  },
+  "pixel_auroc": 0.9238,
+  "aupro_30": 0.6368,
+  "operating_point": {
+    "threshold": 0.3243,
+    "recall": 0.9494,
+    "escape_rate": 0.0506,
+    "false_reject_rate": 0.6477,
+    "precision": 0.375,
+    "tp": 75,
+    "fn": 4,
+    "fp": 125,
+    "tn": 68
+  },
+  "mean_iou_per_defect": {
+    "blowhole": 0.1392,
+    "break": 0.0004,
+    "crack": 0.003,
+    "fray": 0.166,
+    "uneven": 0.8607
+  },
+  "defect_type_accuracy": 0.3165,
+  "defect_type_confusion": {
+    "labels": [
+      "blowhole",
+      "break",
+      "crack",
+      "fray",
+      "uneven"
+    ],
+    "matrix": [
+      [
+        0,
+        0,
+        0,
+        20,
+        4
+      ],
+      [
+        0,
+        0,
+        0,
+        10,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        7,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0,
+        5
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        25
+      ]
+    ]
+  }
+}
