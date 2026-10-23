@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DefectVision</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1f2328; --muted: #6e7781; --line: #e2e0da;
+    --accent: #2f6f9f; --ok: #2e7d4f; --ko: #b4372a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141619; --panel: #1d2024; --ink: #e8e6e3; --muted: #9aa1a9; --line: #2e3238; --accent: #6aa6d6; --ok: #5cc28a; --ko: #f07a6a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 4px 0 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 28px 12px; text-align: center; color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--accent); color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  select, button { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .samples { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 12px; }
+  .samples img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+  .samples img:hover { border-color: var(--accent); }
+  .result img { width: 100%; border-radius: 8px; display: block; }
+  .verdict { font-size: 20px; font-weight: 650; margin: 0 0 8px; }
+  .verdict.ok { color: var(--ok); } .verdict.ko { color: var(--ko); }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 12px 0 0; font-size: 14px; }
+  dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 0; }
+  .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 0; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>DefectVision</h1>
+  <p class="sub">Inspection visuelle de tuiles magnétiques — PatchCore (sans étiquette de défaut) ou U-Net (supervisé). Inférence ONNX Runtime sur CPU. <a href="/docs">API</a></p>
+  <div class="grid">
+    <section class="card">
+      <label class="drop" id="drop">Déposer une image ici, ou cliquer pour choisir un fichier
+        <input type="file" id="file" accept="image/*" hidden>
+      </label>
+      <div class="row">
+        <span>Modèle</span>
+        <select id="model"></select>
+      </div>
+      <p class="label">Exemples du jeu de test (pièces jamais vues à l'entraînement)</p>
+      <div class="samples" id="samples"></div>
+    </section>
+    <section class="card result" id="result"><p class="empty">Le résultat s'affichera ici.</p></section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let lastBlob = null;
+
+async function init() {
+  try {
+    const models = await (await fetch("/models")).json();
+    $("model").innerHTML = models.map((m) => `<option value="${m.name}">${m.name === "unet" ? "U-Net (supervisé)" : "PatchCore (non supervisé)"}</option>`).join("");
+  } catch { $("model").innerHTML = "<option>indisponible</option>"; }
+  try {
+    const samples = await (await fetch("/samples/manifest.json")).json();
+    $("samples").innerHTML = samples.map((s) => `<img src="/samples/${s.file}" alt="${s.label}" title="${s.label}" data-file="${s.file}">`).join("");
+    $("samples").querySelectorAll("img").forEach((img) => img.onclick = async () => run(await (await fetch(img.src)).blob()));
+  } catch {}
+  $("model").onchange = () => lastBlob && run(lastBlob);
+}
+
+async function run(blob) {
+  lastBlob = blob;
+  $("result").innerHTML = '<p class="empty">Analyse…</p>';
+  const form = new FormData();
+  form.append("file", blob, "image.png");
+  const res = await fetch(`/inspect?model=${encodeURIComponent($("model").value)}`, { method: "POST", body: form });
+  const r = await res.json();
+  if (!res.ok) { $("result").innerHTML = `<p class="empty">${r.detail ?? "Erreur"}</p>`; return; }
+  const ko = r.is_defect;
+  $("result").innerHTML = `
+    <p class="verdict ${ko ? "ko" : "ok"}">${ko ? "Rejet" : "Conforme"}${r.defect_type ? " — " + r.defect_type : ""}</p>
+    <img src="data:image/png;base64,${r.overlay_png}" alt="Carte d'anomalie">
+    <dl>
+      <dt>Score</dt><dd>${r.score.toFixed(4)} (seuil ${r.threshold.toFixed(4)})</dd>
+      <dt>Surface suspecte</dt><dd>${r.defect_area_pct.toFixed(2)} %</dd>
+      <dt>Latence</dt><dd>${r.latency_ms.toFixed(0)} ms</dd>
+    </dl>`;
+}
+
+const drop = $("drop");
+$("file").onchange = (e) => e.target.files[0] && run(e.target.files[0]);
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && run(e.dataTransfer.files[0]); };
+init();
+</script>
+</body>
+</html>

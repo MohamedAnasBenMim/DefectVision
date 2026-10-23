@@ -1,0 +1,7 @@
+data
+weights
+artifacts
+reports
+tests
+.git
+**/__pycache__
