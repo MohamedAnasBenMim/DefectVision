@@ -14,11 +14,11 @@ patchcore:
   blur_sigma: 4
 
 unet:
-  epochs: 40
+  epochs: 12
   batch_size: 8
   lr: 0.0005
   weight_decay: 0.0001
-  good_per_epoch: 240      # good pieces sampled each epoch (class balancing)
+  good_per_epoch: 120      # good pieces sampled each epoch (class balancing)
 
 operating_point:
   target_recall: 0.95      # threshold set on validation to miss at most 5% of defects
