@@ -1,4 +1,4 @@
-"""Inférence de production : ONNX Runtime + NumPy + OpenCV uniquement (pas de PyTorch dans l'image Docker)."""
+"""Production inference: ONNX Runtime + NumPy + OpenCV only (no PyTorch in the Docker image)."""
 
 from __future__ import annotations
 
@@ -23,13 +23,13 @@ class Result:
     defect_type: str | None
     defect_area_pct: float
     latency_ms: float
-    anomaly_map: np.ndarray  # (S, S), même échelle que le score
+    anomaly_map: np.ndarray  # (S, S), same scale as the score
 
     def to_dict(self) -> dict:
         d = {k: v for k, v in self.__dict__.items() if k != "anomaly_map"}
         d["score"], d["threshold"] = round(self.score, 5), round(self.threshold, 5)
         d["defect_area_pct"], d["latency_ms"] = round(self.defect_area_pct, 2), round(self.latency_ms, 1)
-        d["decision"] = "REJET" if self.is_defect else "CONFORME"
+        d["decision"] = "REJECT" if self.is_defect else "PASS"
         return d
 
 
@@ -62,7 +62,7 @@ class OnnxInspector:
 
 
 def overlay(gray: np.ndarray, amap: np.ndarray, threshold: float, alpha: float = 0.45) -> np.ndarray:
-    """Superpose la carte d'anomalie (en couleur, saturée au seuil x 1,5) et le contour des zones rejetées."""
+    """Overlay the anomaly map (color-mapped, saturating at 1.5x the threshold) and the outline of rejected regions."""
     h, w = gray.shape[:2]
     base = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) if gray.ndim == 2 else gray
     m = cv2.resize(amap.astype(np.float32), (w, h), interpolation=cv2.INTER_LINEAR)
@@ -76,5 +76,5 @@ def overlay(gray: np.ndarray, amap: np.ndarray, threshold: float, alpha: float =
 def png_base64(img: np.ndarray) -> str:
     ok, buf = cv2.imencode(".png", img)
     if not ok:
-        raise ValueError("encodage PNG impossible")
+        raise ValueError("PNG encoding failed")
     return base64.b64encode(buf.tobytes()).decode()

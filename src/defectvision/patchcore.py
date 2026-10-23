@@ -1,11 +1,11 @@
-"""PatchCore (Roth et al., CVPR 2022), implémenté de zéro.
+"""PatchCore (Roth et al., CVPR 2022), implemented from scratch.
 
-Idée : n'apprendre que sur des pièces SAINES. On extrait des descripteurs locaux (patchs) d'un réseau
-pré-entraîné, on en garde un sous-ensemble représentatif (coreset glouton k-center) dans une banque
-mémoire ; au test, la distance d'un patch à son plus proche voisin sain mesure son anomalie.
+Idea: learn from GOOD pieces only. Local descriptors (patches) are extracted from a pretrained network,
+and a representative subset (greedy k-center coreset) is kept in a memory bank; at test time, the
+distance from a patch to its nearest good neighbour measures how anomalous it is.
 
-Le module complet (extraction, distances, carte d'anomalie, flou) est un `nn.Module` : il s'exporte
-tel quel en un seul fichier ONNX, banque mémoire comprise.
+The whole pipeline (feature extraction, distances, anomaly map, blur) is a single `nn.Module`, so it
+exports as-is to one ONNX file, memory bank included.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class PatchCore(nn.Module):
         self.eval()
 
     def features(self, x: torch.Tensor) -> torch.Tensor:
-        """(B, 3, S, S) -> (B, H*W, 384) : couches 2 et 3, lissage local 3x3, même résolution."""
+        """(B, 3, S, S) -> (B, H*W, 384): layers 2 and 3, 3x3 local smoothing, same resolution."""
         f2 = self.layer2(self.stem(x))
         f3 = self.layer3(f2)
         f2 = F.avg_pool2d(f2, 3, stride=1, padding=1)
@@ -48,7 +48,7 @@ class PatchCore(nn.Module):
         return f.flatten(2).transpose(1, 2)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Renvoie (score d'image (B,), carte d'anomalie (B, S, S))."""
+        """Return (image score (B,), anomaly map (B, S, S))."""
         b = x.shape[0]
         f = self.features(x)  # (B, N, D)
         side = int(math.isqrt(f.shape[1]))
@@ -63,12 +63,12 @@ class PatchCore(nn.Module):
     @torch.no_grad()
     def fit(self, batches, coreset_ratio: float = 0.02, projection_dim: int = 128, seed: int = 0, log=print) -> None:
         feats = torch.cat([self.features(x).reshape(-1, self.memory.shape[1]) for x in batches])
-        log(f"patchs sains : {feats.shape[0]:,} x {feats.shape[1]}")
+        log(f"good patches: {feats.shape[0]:,} x {feats.shape[1]}")
         n = max(1, int(feats.shape[0] * coreset_ratio))
         idx = greedy_coreset(feats, n, projection_dim, seed)
         self.memory = feats[idx].contiguous()
         self.memory_sq = (self.memory**2).sum(-1)
-        log(f"banque mémoire : {n:,} patchs ({coreset_ratio:.1%})")
+        log(f"memory bank: {n:,} patches ({coreset_ratio:.1%})")
 
     @torch.no_grad()
     def predict(self, x: torch.Tensor, batch_size: int = 8) -> tuple[np.ndarray, np.ndarray]:
@@ -81,10 +81,10 @@ class PatchCore(nn.Module):
 
 
 def greedy_coreset(feats: torch.Tensor, n: int, projection_dim: int = 128, seed: int = 0) -> torch.Tensor:
-    """Sélection k-center gloutonne : chaque nouveau point est le plus éloigné des points déjà choisis.
+    """Greedy k-center selection: each new point is the one farthest from the points already selected.
 
-    Couvre l'espace des patchs sains avec n points. Une projection aléatoire (Johnson-Lindenstrauss)
-    réduit la dimension pour accélérer le calcul des distances.
+    Covers the space of good patches with n points. A random projection (Johnson-Lindenstrauss) reduces
+    the dimension to speed up the distance computations.
     """
     g = torch.Generator().manual_seed(seed)
     if projection_dim and projection_dim < feats.shape[1]:
@@ -96,7 +96,7 @@ def greedy_coreset(feats: torch.Tensor, n: int, projection_dim: int = 128, seed:
     sq = (z * z).sum(-1)
     selected = torch.empty(n, dtype=torch.long)
     selected[0] = torch.randint(len(z), (1,), generator=g)
-    # ||z - c||² = ||z||² - 2 z·c + ||c||² : un produit matrice-vecteur, sans tableau temporaire (N, d)
+    # ||z - c||^2 = ||z||^2 - 2 z.c + ||c||^2: one matrix-vector product, no temporary (N, d) array
     min_d = sq - 2 * (z @ z[selected[0]]) + sq[selected[0]]
     for i in range(1, n):
         c = int(torch.argmax(min_d))

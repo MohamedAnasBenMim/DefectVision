@@ -1,4 +1,4 @@
-"""Expériences reproductibles : entraînement, évaluation et rapport de métriques (JSON)."""
+"""Reproducible experiments: training, evaluation and metrics report (JSON)."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def split_summary(split: dict[str, list[data.Sample]]) -> dict:
 def evaluate_scores(
     cfg: dict, val: list[data.Sample], val_scores: np.ndarray, test: list[data.Sample], test_scores, test_maps, size
 ) -> dict:
-    """Métriques image + pixel sur le test, seuil calibré sur la validation."""
+    """Image- and pixel-level metrics on the test set, with the threshold calibrated on validation."""
     y_val = np.array([s.is_defect for s in val])
     y_test = np.array([s.is_defect for s in test])
     thr = metrics.threshold_for_recall(y_val, val_scores, cfg["operating_point"]["target_recall"])
@@ -86,7 +86,7 @@ def run_patchcore(
     size = cfg["image_size"]
     pc_cfg = cfg["patchcore"]
     split = get_split(cfg, by_group)
-    train_good = [s for s in split["train"] if not s.is_defect]  # PatchCore ne voit AUCUN défaut
+    train_good = [s for s in split["train"] if not s.is_defect]  # PatchCore never sees a single defect
     model = PatchCore(resnet18(), image_size=size, blur_sigma=pc_cfg["blur_sigma"])
 
     t0 = time.perf_counter()
@@ -101,7 +101,7 @@ def run_patchcore(
 
     report = {
         "model": "patchcore",
-        "split": "pièces (groupes)" if by_group else "images (aléatoire)",
+        "split": "by physical piece (group)" if by_group else "by image (random)",
         "split_summary": split_summary(split),
         "training_images": len(train_good),
         "defect_labels_used": 0,
@@ -137,7 +137,7 @@ def run_unet(cfg: dict, out_dir: str | Path = "artifacts", log=print):
     test_scores, test_maps, test_cls = segmentation.predict(model, split["test"], size)
     infer_ms = (time.perf_counter() - t0) / len(split["test"]) * 1000
 
-    # segmentation : IoU par type de défaut (pixels prédits de ce type vs vérité terrain)
+    # segmentation: IoU per defect type (predicted pixels of that type vs ground truth)
     masks = load_masks(split["test"], size)
     per_class_iou = {}
     with torch.no_grad():
@@ -155,7 +155,7 @@ def run_unet(cfg: dict, out_dir: str | Path = "artifacts", log=print):
 
     report = {
         "model": "unet",
-        "split": "pièces (groupes)",
+        "split": "by physical piece (group)",
         "split_summary": split_summary(split),
         "training_images": len(split["train"]),
         "defect_labels_used": sum(s.is_defect for s in split["train"]),

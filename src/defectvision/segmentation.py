@@ -1,7 +1,7 @@
-"""U-Net supervisé (encodeur ResNet-18 ImageNet) : segmentation et typage des défauts, pixel par pixel.
+"""Supervised U-Net (ImageNet ResNet-18 encoder): per-pixel defect segmentation and classification.
 
-Sortie : 6 canaux (sain + 5 types de défaut). Score d'anomalie d'un pixel = 1 - P(sain) ; score d'image
-= maximum de cette carte après un léger lissage (un pixel isolé ne suffit pas à rejeter une pièce).
+Output: 6 channels (good + 5 defect types). Pixel anomaly score = 1 - P(good); image score = maximum of
+that map after light smoothing (a single isolated pixel is not enough to reject a piece).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ class UNet(nn.Module):
 
 
 class Inspector(nn.Module):
-    """Enveloppe d'inférence exportable : (score d'image, carte d'anomalie, probabilités par classe)."""
+    """Exportable inference wrapper: (image score, anomaly map, per-class probabilities)."""
 
     def __init__(self, unet: UNet, smooth: int = 5):
         super().__init__()
@@ -80,7 +80,7 @@ class Inspector(nn.Module):
 
 
 def dice_loss(logits: torch.Tensor, target: torch.Tensor, eps: float = 1.0) -> torch.Tensor:
-    """Dice moyen sur les classes de défaut présentes dans le lot (le fond est géré par l'entropie croisée)."""
+    """Mean Dice over the defect classes present in the batch (the background is handled by cross-entropy)."""
     probs = logits.softmax(1)
     onehot = F.one_hot(target, logits.shape[1]).permute(0, 3, 1, 2).float()
     inter = (probs * onehot).sum((0, 2, 3))
@@ -91,7 +91,7 @@ def dice_loss(logits: torch.Tensor, target: torch.Tensor, eps: float = 1.0) -> t
 
 
 def augment(img: np.ndarray, mask: np.ndarray, rng: random.Random) -> tuple[np.ndarray, np.ndarray]:
-    """Retournements et variation de luminosité / contraste (l'éclairage varie d'une prise de vue à l'autre)."""
+    """Flips and brightness/contrast jitter (lighting varies from one shot to the next)."""
     if rng.random() < 0.5:
         img, mask = img[:, ::-1], mask[:, ::-1]
     if rng.random() < 0.5:
@@ -105,7 +105,7 @@ def load_pair(s: data.Sample, size: int) -> tuple[np.ndarray, np.ndarray]:
     import cv2
 
     img = cv2.resize(data.read_gray(s.image), (size, size), interpolation=cv2.INTER_AREA)
-    mask = data.read_mask(s.mask, size) * s.class_index  # masque binaire -> indice de classe
+    mask = data.read_mask(s.mask, size) * s.class_index  # binary mask -> class index
     return img, mask.astype(np.int64)
 
 
@@ -123,7 +123,7 @@ def predict(model: Inspector, samples: list[data.Sample], size: int, batch_size:
         sc, amap, probs = model(x)
         scores.append(sc.numpy())
         maps.append(amap.numpy())
-        # type de défaut = classe (hors sain) la plus probable, pondérée sur toute l'image
+        # defect type = most likely non-good class, weighted over the whole image
         classes.append((probs[:, 1:] * amap[:, None]).sum((2, 3)).argmax(1).numpy() + 1)
     return np.concatenate(scores), np.concatenate(maps), np.concatenate(classes)
 
@@ -181,7 +181,7 @@ def train(
             {"epoch": epoch + 1, "loss": round(float(np.mean(losses)), 4), **{k: round(v, 4) for k, v in val.items()}}
         )
         log(
-            f"époque {epoch + 1:>2}/{ucfg['epochs']}  perte {np.mean(losses):.4f}  val AUROC {val['image_auroc']:.4f}  Dice {val['dice']:.4f}  ({time.perf_counter() - t_start:.0f} s)"
+            f"epoch {epoch + 1:>2}/{ucfg['epochs']}  loss {np.mean(losses):.4f}  val AUROC {val['image_auroc']:.4f}  Dice {val['dice']:.4f}  ({time.perf_counter() - t_start:.0f} s)"
         )
         if sel > best[0]:
             best = (sel, epoch + 1)

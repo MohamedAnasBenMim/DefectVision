@@ -1,4 +1,4 @@
-"""Export ONNX autonome : un seul fichier par modèle, seuil de décision et métadonnées inclus."""
+"""Self-contained ONNX export: a single file per model, decision threshold and metadata included."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def export(
 
 
 def parity(model: torch.nn.Module, path: str | Path, image_size: int, n: int = 2, seed: int = 0) -> float:
-    """Écart maximal entre PyTorch et ONNX Runtime sur le score et la carte d'anomalie."""
+    """Maximum absolute difference between PyTorch and ONNX Runtime on the score and the anomaly map."""
     import onnxruntime as ort
 
     x = np.random.default_rng(seed).standard_normal((n, 3, image_size, image_size)).astype(np.float32)

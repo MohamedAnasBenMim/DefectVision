@@ -1,4 +1,4 @@
-"""Ligne de commande : `dv <commande>` (voir README)."""
+"""Command-line interface: `dv <command>` (see README)."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="dv", description="DefectVision")
     p.add_argument("--config", default="configs/default.yaml")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("fetch-data", help="télécharge le jeu de données (commit figé)")
-    sub.add_parser("fetch-weights", help="télécharge ResNet-18 ImageNet (ONNX Model Zoo) et vérifie l'empreinte")
-    pc = sub.add_parser("patchcore", help="entraîne et évalue PatchCore")
-    pc.add_argument("--random-split", action="store_true", help="découpage par image (pour mesurer la fuite)")
-    sub.add_parser("unet", help="entraîne et évalue le U-Net supervisé")
-    sub.add_parser("export", help="exporte les modèles entraînés en ONNX (models/)")
-    bench = sub.add_parser("benchmark", help="latence ONNX Runtime sur CPU")
+    sub.add_parser("fetch-data", help="download the dataset (pinned commit)")
+    sub.add_parser("fetch-weights", help="download ImageNet ResNet-18 (ONNX Model Zoo) and verify its checksum")
+    pc = sub.add_parser("patchcore", help="train and evaluate PatchCore")
+    pc.add_argument("--random-split", action="store_true", help="split by image (to measure leakage)")
+    sub.add_parser("unet", help="train and evaluate the supervised U-Net")
+    sub.add_parser("export", help="export the trained models to ONNX (models/)")
+    bench = sub.add_parser("benchmark", help="ONNX Runtime latency on CPU")
     bench.add_argument("--runs", type=int, default=50)
-    sub.add_parser("figures", help="génère les figures du rapport")
-    serve = sub.add_parser("serve", help="lance l'API")
+    sub.add_parser("figures", help="generate the report figures")
+    serve = sub.add_parser("serve", help="start the API server")
     serve.add_argument("--port", type=int, default=8000)
     args = p.parse_args(argv)
 

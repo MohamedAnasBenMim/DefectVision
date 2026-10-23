@@ -17,24 +17,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
-      - name: Dépendances (PyTorch CPU, sans CUDA)
+      - name: Dependencies (CPU-only PyTorch, no CUDA)
         run: |
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[train,dev]"
       - run: ruff check . && ruff format --check .
-      - name: Poids ResNet-18 ImageNet (ONNX Model Zoo, empreinte vérifiée)
+      - name: ResNet-18 ImageNet weights (ONNX Model Zoo, checksum verified)
         run: dv fetch-weights
       - run: pytest -v
 
   serving:
-    name: Modèles livrés + API (ONNX Runtime seul)
+    name: Shipped models + API (ONNX Runtime only)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
       - run: pip install . pytest httpx
-      - name: Les modèles du dépôt se chargent et inspectent les exemples
+      - name: Committed models load and inspect the samples
         run: |
           python - <<'PY'
           import json, cv2
@@ -44,16 +44,16 @@ jobs:
               insp = OnnxInspector(f"models/{name}.onnx")
               for s in samples:
                   r = insp.inspect(cv2.imread(f"web/samples/{s['file']}", cv2.IMREAD_GRAYSCALE))
-                  print(f"{name:9s} {s['label']:9s} score={r.score:.4f} seuil={r.threshold:.4f} -> {r.to_dict()['decision']}")
+                  print(f"{name:9s} {s['label']:9s} score={r.score:.4f} threshold={r.threshold:.4f} -> {r.to_dict()['decision']}")
           PY
 
   docker:
-    name: Image Docker + test de fumée
+    name: Docker image + smoke test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t defectvision .
-      - name: Démarrage et inspection d'une image
+      - name: Start container and inspect an image
         run: |
           docker run -d -p 8000:8000 --name dv defectvision
           for i in $(seq 1 30); do curl -sf localhost:8000/health && break; sleep 1; done

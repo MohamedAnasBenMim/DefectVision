@@ -1,16 +1,16 @@
-# Configuration unique des expériences (graine, découpage, modèles)
+# Single configuration for all experiments (seed, split, models)
 seed: 42
 data_dir: data/magnetic-tile
 image_size: 256
 
-split:            # fractions de PIÈCES PHYSIQUES (groupes de 6 éclairages), pas d'images
+split:            # fractions of PHYSICAL PIECES (groups of 6 lighting conditions), not images
   val: 0.2
   test: 0.2
 
 patchcore:
   layers: [layer2, layer3]
-  coreset_ratio: 0.02      # 2 % des patchs conservés dans la banque mémoire
-  projection_dim: 128      # projection aléatoire pour accélérer la sélection du coreset
+  coreset_ratio: 0.02      # 2% of patches kept in the memory bank
+  projection_dim: 128      # random projection to speed up coreset selection
   blur_sigma: 4
 
 unet:
@@ -18,7 +18,7 @@ unet:
   batch_size: 8
   lr: 0.0005
   weight_decay: 0.0001
-  good_per_epoch: 240      # pièces saines tirées à chaque époque (équilibrage)
+  good_per_epoch: 240      # good pieces sampled each epoch (class balancing)
 
 operating_point:
-  target_recall: 0.95      # seuil choisi sur la validation pour rater au plus 5 % des défauts
+  target_recall: 0.95      # threshold set on validation to miss at most 5% of defects

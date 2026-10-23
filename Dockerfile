@@ -1,4 +1,4 @@
-# Image de service : ONNX Runtime uniquement (pas de PyTorch), modèles inclus.
+# Serving image: ONNX Runtime only (no PyTorch), models included.
 FROM python:3.12-slim
 WORKDIR /srv
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DV_MODELS_DIR=/srv/models DV_WEB_DIR=/srv/web

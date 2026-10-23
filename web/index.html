@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,20 +40,20 @@
 <body>
 <main>
   <h1>DefectVision</h1>
-  <p class="sub">Inspection visuelle de tuiles magnétiques — PatchCore (sans étiquette de défaut) ou U-Net (supervisé). Inférence ONNX Runtime sur CPU. <a href="/docs">API</a></p>
+  <p class="sub">Visual inspection of magnetic tiles — PatchCore (no defect labels) or U-Net (supervised). ONNX Runtime inference on CPU. <a href="/docs">API</a></p>
   <div class="grid">
     <section class="card">
-      <label class="drop" id="drop">Déposer une image ici, ou cliquer pour choisir un fichier
+      <label class="drop" id="drop">Drop an image here, or click to choose a file
         <input type="file" id="file" accept="image/*" hidden>
       </label>
       <div class="row">
-        <span>Modèle</span>
+        <span>Model</span>
         <select id="model"></select>
       </div>
-      <p class="label">Exemples du jeu de test (pièces jamais vues à l'entraînement)</p>
+      <p class="label">Test set samples (pieces never seen during training)</p>
       <div class="samples" id="samples"></div>
     </section>
-    <section class="card result" id="result"><p class="empty">Le résultat s'affichera ici.</p></section>
+    <section class="card result" id="result"><p class="empty">The result will appear here.</p></section>
   </div>
 </main>
 <script>
@@ -63,8 +63,8 @@ let lastBlob = null;
 async function init() {
   try {
     const models = await (await fetch("/models")).json();
-    $("model").innerHTML = models.map((m) => `<option value="${m.name}">${m.name === "unet" ? "U-Net (supervisé)" : "PatchCore (non supervisé)"}</option>`).join("");
-  } catch { $("model").innerHTML = "<option>indisponible</option>"; }
+    $("model").innerHTML = models.map((m) => `<option value="${m.name}">${m.name === "unet" ? "U-Net (supervised)" : "PatchCore (unsupervised)"}</option>`).join("");
+  } catch { $("model").innerHTML = "<option>unavailable</option>"; }
   try {
     const samples = await (await fetch("/samples/manifest.json")).json();
     $("samples").innerHTML = samples.map((s) => `<img src="/samples/${s.file}" alt="${s.label}" title="${s.label}" data-file="${s.file}">`).join("");
@@ -75,20 +75,20 @@ async function init() {
 
 async function run(blob) {
   lastBlob = blob;
-  $("result").innerHTML = '<p class="empty">Analyse…</p>';
+  $("result").innerHTML = '<p class="empty">Analyzing…</p>';
   const form = new FormData();
   form.append("file", blob, "image.png");
   const res = await fetch(`/inspect?model=${encodeURIComponent($("model").value)}`, { method: "POST", body: form });
   const r = await res.json();
-  if (!res.ok) { $("result").innerHTML = `<p class="empty">${r.detail ?? "Erreur"}</p>`; return; }
+  if (!res.ok) { $("result").innerHTML = `<p class="empty">${r.detail ?? "Error"}</p>`; return; }
   const ko = r.is_defect;
   $("result").innerHTML = `
-    <p class="verdict ${ko ? "ko" : "ok"}">${ko ? "Rejet" : "Conforme"}${r.defect_type ? " — " + r.defect_type : ""}</p>
-    <img src="data:image/png;base64,${r.overlay_png}" alt="Carte d'anomalie">
+    <p class="verdict ${ko ? "ko" : "ok"}">${ko ? "Reject" : "Pass"}${r.defect_type ? " — " + r.defect_type : ""}</p>
+    <img src="data:image/png;base64,${r.overlay_png}" alt="Anomaly map">
     <dl>
-      <dt>Score</dt><dd>${r.score.toFixed(4)} (seuil ${r.threshold.toFixed(4)})</dd>
-      <dt>Surface suspecte</dt><dd>${r.defect_area_pct.toFixed(2)} %</dd>
-      <dt>Latence</dt><dd>${r.latency_ms.toFixed(0)} ms</dd>
+      <dt>Score</dt><dd>${r.score.toFixed(4)} (threshold ${r.threshold.toFixed(4)})</dd>
+      <dt>Suspect area</dt><dd>${r.defect_area_pct.toFixed(2)}%</dd>
+      <dt>Latency</dt><dd>${r.latency_ms.toFixed(0)} ms</dd>
     </dl>`;
 }
 

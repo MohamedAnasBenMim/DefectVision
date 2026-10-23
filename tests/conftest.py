@@ -10,14 +10,14 @@ from defectvision.backbone import DEFAULT_PATH
 
 
 def texture(rng: np.random.Generator, size: int = 96) -> np.ndarray:
-    """Surface « saine » synthétique : stries verticales + bruit, éclairage variable."""
+    """Synthetic "good" surface: vertical streaks + noise, variable lighting."""
     cols = rng.normal(128, 12, size)
     img = np.tile(cols, (size, 1)) + rng.normal(0, 6, (size, size)) + rng.uniform(-20, 20)
     return np.clip(img, 0, 255).astype(np.uint8)
 
 
 def with_defect(img: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
-    """Ajoute une rayure sombre (le défaut) et renvoie l'image et son masque."""
+    """Add a dark scratch (the defect) and return the image and its mask."""
     out, mask = img.copy(), np.zeros_like(img)
     s = img.shape[0]
     p1 = tuple(int(v) for v in rng.integers(10, s - 10, 2))
@@ -34,7 +34,7 @@ def pretrained() -> bool:
 
 @pytest.fixture
 def fake_dataset(tmp_path: Path) -> Path:
-    """Arborescence identique au vrai jeu de données : 2 pièces saines et 2 pièces fissurées, 6 éclairages chacune."""
+    """Same directory layout as the real dataset: 2 good and 2 cracked pieces, 6 lighting conditions each."""
     rng = np.random.default_rng(0)
     for folder, base_nums in {"MT_Free": [1000, 5000], "MT_Crack": [2000, 9000]}.items():
         d = tmp_path / folder / "Imgs"

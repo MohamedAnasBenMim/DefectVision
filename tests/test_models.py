@@ -19,16 +19,16 @@ def batch(images):
 
 def test_weight_conversion_matches_onnx_runtime(pretrained):
     if not pretrained:
-        pytest.skip("poids absents : lancer `dv fetch-weights`")
+        pytest.skip("weights missing: run `dv fetch-weights`")
     assert check_parity(DEFAULT_PATH) < 1e-4
 
 
 def test_greedy_coreset_selects_distinct_spread_points():
     torch.manual_seed(0)
-    pts = torch.cat([torch.randn(200, 8) * 0.01 + c for c in (0.0, 5.0, 10.0)])  # 3 amas
+    pts = torch.cat([torch.randn(200, 8) * 0.01 + c for c in (0.0, 5.0, 10.0)])  # 3 clusters
     idx = greedy_coreset(pts, 3, projection_dim=0)
     assert len(set(idx.tolist())) == 3
-    assert sorted(int(i) // 200 for i in idx) == [0, 1, 2]  # un point par amas
+    assert sorted(int(i) // 200 for i in idx) == [0, 1, 2]  # one point per cluster
 
 
 def test_patchcore_learns_from_good_only_and_flags_scratches(pretrained):
@@ -40,7 +40,7 @@ def test_patchcore_learns_from_good_only_and_flags_scratches(pretrained):
     scores, maps = model.predict(batch(goods + list(bads)))
     assert maps.shape == (20, SIZE, SIZE)
     assert metrics.auroc(np.repeat([0, 1], 10), scores) > 0.9
-    # la carte d'anomalie se concentre sur la rayure
+    # the anomaly map concentrates on the scratch
     assert metrics.pixel_auroc(np.stack(masks), maps[10:]) > 0.8
 
 
@@ -76,4 +76,4 @@ def test_onnx_export_is_self_contained_and_faithful(tmp_path):
     insp = OnnxInspector(path)
     assert (insp.kind, insp.threshold, insp.image_size) == ("unet", 0.5, SIZE)
     res = insp.inspect(texture(rng, 100))
-    assert res.anomaly_map.shape == (SIZE, SIZE) and res.to_dict()["decision"] in {"REJET", "CONFORME"}
+    assert res.anomaly_map.shape == (SIZE, SIZE) and res.to_dict()["decision"] in {"REJECT", "PASS"}

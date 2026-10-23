@@ -1,8 +1,8 @@
-"""ResNet-18 pré-entraîné sur ImageNet, sans dépendre d'un hub de modèles.
+"""ImageNet-pretrained ResNet-18, without depending on a model hub.
 
-Les poids proviennent du ONNX Model Zoo (fichier figé, empreinte SHA-256 vérifiée) et sont copiés dans
-l'architecture torchvision équivalente. `tests/test_backbone.py` vérifie que les sorties PyTorch et
-ONNX Runtime coïncident.
+The weights come from the ONNX Model Zoo (pinned file, SHA-256 checksum verified) and are copied into
+the equivalent torchvision architecture. `tests/test_models.py` checks that the PyTorch and ONNX Runtime
+outputs match.
 """
 
 from __future__ import annotations
@@ -27,24 +27,24 @@ def fetch_weights(path: str | Path = DEFAULT_PATH) -> Path:
         tmp.rename(path)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     if digest != WEIGHTS_SHA256:
-        raise ValueError(f"empreinte inattendue pour {path} : {digest}")
+        raise ValueError(f"unexpected checksum for {path}: {digest}")
     return path
 
 
 def onnx_to_state_dict(onnx_path: str | Path) -> dict:
-    """Associe chaque Conv/BatchNorm/Gemm du graphe ONNX au module torchvision correspondant."""
+    """Map each Conv/BatchNorm/Gemm node of the ONNX graph to the corresponding torchvision module."""
     import onnx
     import torch
     from onnx import numpy_helper
 
     model = onnx.load(str(onnx_path))
     init = {t.name: numpy_helper.to_array(t) for t in model.graph.initializer}
-    producer = {}  # nom de tenseur -> nœud qui le produit
+    producer = {}  # tensor name -> node that produces it
     for node in model.graph.node:
         for out in node.output:
             producer[out] = node
 
-    # ordre des convolutions dans torchvision ; les convolutions 1x1 sont les raccourcis (downsample)
+    # convolution order in torchvision; the 1x1 convolutions are the shortcuts (downsample)
     blocks = [f"layer{i}.{j}" for i in range(1, 5) for j in range(2)]
     downsample = iter(["layer2.0.downsample", "layer3.0.downsample", "layer4.0.downsample"])
     convs3 = iter([f"{b}.conv{k}" for b in blocks for k in (1, 2)])
@@ -75,7 +75,7 @@ def onnx_to_state_dict(onnx_path: str | Path) -> dict:
 
 
 def resnet18(onnx_path: str | Path | None = None, pretrained: bool = True):
-    """ResNet-18 torchvision, avec les poids ImageNet si `pretrained`."""
+    """torchvision ResNet-18, with ImageNet weights if `pretrained`."""
     import torchvision
 
     net = torchvision.models.resnet18(weights=None)
@@ -85,7 +85,7 @@ def resnet18(onnx_path: str | Path | None = None, pretrained: bool = True):
 
 
 def check_parity(onnx_path: str | Path, n: int = 2, seed: int = 0) -> float:
-    """Écart maximal entre les logits PyTorch (poids convertis) et ONNX Runtime (fichier d'origine)."""
+    """Maximum absolute difference between PyTorch logits (converted weights) and ONNX Runtime (original file)."""
     import onnxruntime as ort
     import torch
 

@@ -8,7 +8,7 @@ def test_auroc_matches_sklearn_with_ties():
     sk = pytest.importorskip("sklearn.metrics")
     rng = np.random.default_rng(0)
     y = rng.integers(0, 2, 500)
-    s = np.round(rng.normal(y * 0.8, 1), 1)  # arrondi -> nombreux ex aequo
+    s = np.round(rng.normal(y * 0.8, 1), 1)  # rounding -> many ties
     assert metrics.auroc(y, s) == pytest.approx(sk.roc_auc_score(y, s), abs=1e-12)
 
 

@@ -1,9 +1,8 @@
-"""Jeu de données Magnetic Tile Defects (Huang et al., 2018) : téléchargement, index et découpage.
+"""Magnetic Tile Defects dataset (Huang et al., 2018): download, indexing and splitting.
 
-Point clé : chaque tuile physique est photographiée sous 6 éclairages (préfixes exp1…exp6), avec des
-identifiants `num` très proches. Un découpage aléatoire par IMAGE place la même pièce dans
-l'entraînement et dans le test : les scores sont alors gonflés. On regroupe donc les images par pièce
-(`group`) et on découpe par groupe.
+Key point: each physical tile is photographed under 6 lighting conditions (prefixes exp1...exp6), with
+very close `num` identifiers. A random split by IMAGE puts the same piece in both the training and the
+test set, which inflates the scores. Images are therefore grouped by piece (`group`) and split by group.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ import numpy as np
 REPO = "https://github.com/abin24/Magnetic-tile-defect-datasets..git"
 COMMIT = "cc4eb530b57b9cb7225bf76023873043ffd50655"
 
-CLASSES = ["good", "blowhole", "break", "crack", "fray", "uneven"]  # index 0 = pièce saine
+CLASSES = ["good", "blowhole", "break", "crack", "fray", "uneven"]  # index 0 = good piece
 FOLDERS = {
     "MT_Free": "good",
     "MT_Blowhole": "blowhole",
@@ -31,7 +30,7 @@ FOLDERS = {
     "MT_Uneven": "uneven",
 }
 _NAME = re.compile(r"exp(\d+)_num_(\d+)\.jpg$")
-GROUP_GAP = 200  # écart maximal d'identifiant entre deux prises de vue d'une même pièce
+GROUP_GAP = 200  # maximum identifier gap between two shots of the same piece
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -41,10 +40,10 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 class Sample:
     image: Path
     mask: Path
-    label: str  # "good" ou type de défaut
+    label: str  # "good" or defect type
     exposure: int
     num: int
-    group: str  # identifiant de la pièce physique
+    group: str  # physical piece identifier
 
     @property
     def is_defect(self) -> bool:
@@ -56,7 +55,7 @@ class Sample:
 
 
 def fetch(data_dir: str | Path) -> Path:
-    """Clone le dépôt public du jeu de données à un commit figé (reproductibilité)."""
+    """Clone the public dataset repository at a pinned commit (reproducibility)."""
     data_dir = Path(data_dir)
     if (data_dir / "MT_Free").exists():
         return data_dir
@@ -67,7 +66,7 @@ def fetch(data_dir: str | Path) -> Path:
 
 
 def index(data_dir: str | Path) -> list[Sample]:
-    """Liste toutes les images avec leur masque, leur classe et leur groupe (pièce physique)."""
+    """List all images with their mask, class and group (physical piece)."""
     data_dir = Path(data_dir)
     samples: list[Sample] = []
     for folder, label in FOLDERS.items():
@@ -79,7 +78,7 @@ def index(data_dir: str | Path) -> list[Sample]:
         items.sort()
         group_id, last_num, exposures = -1, None, set()
         for num, exp, img in items:
-            # nouvelle pièce si l'identifiant saute, ou si cet éclairage est déjà pris dans le groupe courant
+            # new piece if the identifier jumps, or if this lighting condition is already taken in the current group
             if last_num is None or num - last_num > GROUP_GAP or exp in exposures:
                 group_id += 1
                 exposures = set()
@@ -87,12 +86,12 @@ def index(data_dir: str | Path) -> list[Sample]:
             last_num = num
             samples.append(Sample(img, img.with_suffix(".png"), label, exp, num, f"{label}-{group_id:03d}"))
     if not samples:
-        raise FileNotFoundError(f"aucune image trouvée dans {data_dir} (lancer `dv fetch-data`)")
+        raise FileNotFoundError(f"no images found in {data_dir} (run `dv fetch-data`)")
     return samples
 
 
 def split(samples: list[Sample], val: float, test: float, seed: int, by_group: bool = True) -> dict[str, list[Sample]]:
-    """Découpage stratifié par classe. `by_group=False` reproduit l'erreur courante (découpage par image)."""
+    """Class-stratified split. `by_group=False` reproduces the common mistake (splitting by image)."""
     rng = random.Random(seed)
     out: dict[str, list[Sample]] = {"train": [], "val": [], "test": []}
     by_label: dict[str, list[Sample]] = defaultdict(list)
@@ -115,7 +114,7 @@ def split(samples: list[Sample], val: float, test: float, seed: int, by_group: b
 def read_gray(path: str | Path) -> np.ndarray:
     img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
     if img is None:
-        raise ValueError(f"image illisible : {path}")
+        raise ValueError(f"unreadable image: {path}")
     return img
 
 
@@ -125,7 +124,7 @@ def read_mask(path: str | Path, size: int) -> np.ndarray:
 
 
 def preprocess(gray: np.ndarray, size: int) -> np.ndarray:
-    """Image en niveaux de gris (H, W) -> tenseur normalisé ImageNet (3, size, size) float32."""
+    """Grayscale image (H, W) -> ImageNet-normalized float32 tensor (3, size, size)."""
     if gray.ndim == 3:
         gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
     x = cv2.resize(gray, (size, size), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0

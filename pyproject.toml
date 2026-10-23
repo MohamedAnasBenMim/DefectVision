@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "defectvision"
 version = "0.1.0"
-description = "Inspection visuelle industrielle : détection et segmentation de défauts (PatchCore non supervisé vs U-Net supervisé), export ONNX, API."
+description = "Industrial visual inspection: defect detection and segmentation (unsupervised PatchCore vs supervised U-Net), ONNX export, API."
 authors = [{ name = "Mohamed Anas Ben Mim", email = "mohamedanas.benmim@ensi-uma.tn" }]
 license = { text = "MIT" }
 requires-python = ">=3.11"

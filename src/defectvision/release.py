@@ -1,4 +1,4 @@
-"""Passage en production : export ONNX des modèles entraînés et mesure de latence CPU."""
+"""Release to production: ONNX export of the trained models and CPU latency benchmark."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def export_all(cfg: dict, artifacts: str | Path = "artifacts", models_dir: str |
 
 
 def benchmark(cfg: dict, models_dir: str | Path = "models", runs: int = 50, threads: int = 0) -> dict:
-    """Latence de bout en bout d'une inspection (prétraitement + ONNX Runtime + post-traitement), lot de 1."""
+    """End-to-end latency of one inspection (preprocessing + ONNX Runtime + postprocessing), batch size 1."""
     import os
 
     from .data import index, read_gray
@@ -65,7 +65,7 @@ def benchmark(cfg: dict, models_dir: str | Path = "models", runs: int = 50, thre
     for path in sorted(Path(models_dir).glob("*.onnx")):
         insp = OnnxInspector(path, threads=threads)
         for img in images[:3]:
-            insp.inspect(img)  # préchauffage
+            insp.inspect(img)  # warm-up
         lat = []
         for i in range(runs):
             t0 = time.perf_counter()
@@ -83,7 +83,7 @@ def benchmark(cfg: dict, models_dir: str | Path = "models", runs: int = 50, thre
 
 
 def quantize_int8(src: str | Path, dst: str | Path, calibration: list[np.ndarray]) -> Path:
-    """Quantification statique INT8 (format QDQ, par canal), calibrée sur des images de VALIDATION."""
+    """Static INT8 quantization (QDQ format, per channel), calibrated on VALIDATION images."""
     import onnx
     from onnxruntime.quantization import CalibrationDataReader, QuantFormat, QuantType, quantize_static
     from onnxruntime.quantization.shape_inference import quant_pre_process
@@ -108,7 +108,7 @@ def quantize_int8(src: str | Path, dst: str | Path, calibration: list[np.ndarray
         weight_type=QuantType.QInt8,
     )
     pre.unlink()
-    # recopie des métadonnées (seuil, type de modèle) perdues par la quantification
+    # copy back the metadata (threshold, model kind) lost during quantization
     meta = {p.key: p.value for p in onnx.load(str(src), load_external_data=False).metadata_props}
     m = onnx.load(str(dst))
     del m.metadata_props[:]

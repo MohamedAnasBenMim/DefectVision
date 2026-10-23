@@ -1,4 +1,4 @@
-"""API d'inspection : POST /inspect (image) -> décision, score, type de défaut, carte d'anomalie."""
+"""Inspection API: POST /inspect (image) -> decision, score, defect type, anomaly map."""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ MODELS_DIR = Path(os.getenv("DV_MODELS_DIR", "models"))
 WEB_DIR = Path(os.getenv("DV_WEB_DIR", Path(__file__).resolve().parents[2] / "web"))
 MAX_BYTES = 10 * 1024 * 1024
 
-INSPECTIONS = Counter("dv_inspections_total", "Inspections réalisées", ["model", "decision"])
+INSPECTIONS = Counter("dv_inspections_total", "Inspections performed", ["model", "decision"])
 LATENCY = Histogram(
-    "dv_inference_seconds", "Durée d'inférence ONNX", ["model"], buckets=(0.01, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6)
+    "dv_inference_seconds", "ONNX inference duration", ["model"], buckets=(0.01, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6)
 )
 
 app = FastAPI(
-    title="DefectVision", version="0.1.0", description="Inspection visuelle de tuiles magnétiques (PatchCore, U-Net)."
+    title="DefectVision", version="0.1.0", description="Visual inspection of magnetic tiles (PatchCore, U-Net)."
 )
 _models: dict[str, OnnxInspector] = {}
 
@@ -53,13 +53,13 @@ def list_models() -> list[dict]:
 async def inspect(file: UploadFile = File(...), model: str = Query("unet"), heatmap: bool = Query(True)) -> dict:
     available = models()
     if model not in available:
-        raise HTTPException(404, f"modèle inconnu : {model} (disponibles : {', '.join(sorted(available)) or 'aucun'})")
+        raise HTTPException(404, f"unknown model: {model} (available: {', '.join(sorted(available)) or 'none'})")
     raw = await file.read()
     if len(raw) > MAX_BYTES:
-        raise HTTPException(413, "image trop volumineuse (10 Mo maximum)")
+        raise HTTPException(413, "image too large (10 MB maximum)")
     gray = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_GRAYSCALE)
     if gray is None:
-        raise HTTPException(422, "fichier illisible : envoyer une image JPEG ou PNG")
+        raise HTTPException(422, "unreadable file: please send a JPEG or PNG image")
     t0 = time.perf_counter()
     result = available[model].inspect(gray)
     LATENCY.labels(model).observe(time.perf_counter() - t0)
